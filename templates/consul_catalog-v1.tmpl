@@ -1,7 +1,7 @@
 [backends]
 {{range $index, $node := .Nodes }}
-  [backends."backend-{{ getBackend $node }}".servers."{{ getBackendName $node $index }}"]
-    url = "{{ getAttribute "protocol" $node.Service.Tags "http" }}://{{ getBackendAddress $node }}:{{ $node.Service.Port }}"
+  [backends."backend-{{ $node.BackendName }}".servers."{{ getBackendName ($node.ServiceEntry) $index }}"]
+    url = "{{ getAttribute "protocol" $node.ServiceEntry.Service.Tags "http" }}://{{ getBackendAddress ($node.ServiceEntry) }}:{{ $node.ServiceEntry.Service.Port }}"
     {{ $weight := getAttribute "backend.weight" $node.Service.Tags "0" }}
     {{with $weight }}
       weight = {{ $weight }}

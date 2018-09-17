@@ -62,8 +62,8 @@ func (fi bindataFileInfo) Sys() interface{} {
 
 var _templatesConsul_catalogV1Tmpl = []byte(`[backends]
 {{range $index, $node := .Nodes }}
-  [backends."backend-{{ getBackend $node }}".servers."{{ getBackendName $node $index }}"]
-    url = "{{ getAttribute "protocol" $node.Service.Tags "http" }}://{{ getBackendAddress $node }}:{{ $node.Service.Port }}"
+  [backends."backend-{{ $node.BackendName }}".servers."{{ getBackendName ($node.ServiceEntry) $index }}"]
+    url = "{{ getAttribute "protocol" $node.ServiceEntry.Service.Tags "http" }}://{{ getBackendAddress ($node.ServiceEntry) }}:{{ $node.ServiceEntry.Service.Port }}"
     {{ $weight := getAttribute "backend.weight" $node.Service.Tags "0" }}
     {{with $weight }}
       weight = {{ $weight }}
@@ -189,8 +189,8 @@ var _templatesConsul_catalogTmpl = []byte(`[backends]
 
 {{end}}
 {{range $index, $node := .Nodes}}
-  {{ $server := getServer $node }}
-  [backends."backend-{{ getNodeBackendName $node }}".servers."{{ getServerName $node $index }}"]
+  {{ $server := getServer ($node.ServiceEntry) }}
+  [backends."backend-{{ $node.BackendName }}".servers."{{ getServerName ($node.ServiceEntry) $index }}"]
     url = "{{ $server.URL }}"
     weight = {{ $server.Weight }}
 

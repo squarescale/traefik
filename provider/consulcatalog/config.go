@@ -18,6 +18,11 @@ import (
 	"github.com/hashicorp/consul/api"
 )
 
+type serverItem struct {
+	ServiceEntry *api.ServiceEntry
+	BackendName  string
+}
+
 func (p *Provider) buildConfigurationV2(catalog []catalogUpdate) *types.Configuration {
 	var funcMap = template.FuncMap{
 		"getAttribute": p.getAttribute,
@@ -25,7 +30,6 @@ func (p *Provider) buildConfigurationV2(catalog []catalogUpdate) *types.Configur
 		"hasTag":       hasTag,
 
 		// Backend functions
-		"getNodeBackendName":    getNodeBackendName,
 		"getServiceBackendName": getServiceBackendName,
 		"getBackendAddress":     getBackendAddress,
 		"getServerName":         getServerName,
@@ -52,12 +56,14 @@ func (p *Provider) buildConfigurationV2(catalog []catalogUpdate) *types.Configur
 		"getHeaders":             label.GetHeaders,
 	}
 
-	var allNodes []*api.ServiceEntry
+	var allNodes []serverItem
 	var services []*serviceUpdate
 	for _, info := range catalog {
 		if len(info.Nodes) > 0 {
 			services = append(services, p.generateFrontends(info.Service)...)
-			allNodes = append(allNodes, info.Nodes...)
+			for _, node := range info.Nodes {
+				allNodes = append(allNodes, serverItem{node, info.Service.ServiceName})
+			}
 		}
 	}
 	// Ensure a stable ordering of nodes so that identical configurations may be detected
@@ -65,7 +71,7 @@ func (p *Provider) buildConfigurationV2(catalog []catalogUpdate) *types.Configur
 
 	templateObjects := struct {
 		Services []*serviceUpdate
-		Nodes    []*api.ServiceEntry
+		Nodes    []serverItem
 	}{
 		Services: services,
 		Nodes:    allNodes,
@@ -163,13 +169,9 @@ func getCircuitBreaker(labels map[string]string) *types.CircuitBreaker {
 
 func getServiceBackendName(service *serviceUpdate) string {
 	if service.ParentServiceName != "" {
-		return strings.ToLower(service.ParentServiceName)
+		return service.ParentServiceName
 	}
-	return strings.ToLower(service.ServiceName)
-}
-
-func getNodeBackendName(node *api.ServiceEntry) string {
-	return strings.ToLower(node.Service.Service)
+	return service.ServiceName
 }
 
 func getBackendAddress(node *api.ServiceEntry) string {

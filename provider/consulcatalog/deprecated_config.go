@@ -10,7 +10,6 @@ import (
 	"github.com/containous/traefik/log"
 	"github.com/containous/traefik/provider/label"
 	"github.com/containous/traefik/types"
-	"github.com/hashicorp/consul/api"
 )
 
 // Deprecated
@@ -21,7 +20,6 @@ func (p *Provider) buildConfigurationV1(catalog []catalogUpdate) *types.Configur
 		"hasTag":       hasTag,
 
 		// Backend functions
-		"getBackend":              getNodeBackendName,
 		"getServiceBackendName":   getServiceBackendName,
 		"getBackendAddress":       getBackendAddress,
 		"getBackendName":          getServerName,
@@ -41,12 +39,14 @@ func (p *Provider) buildConfigurationV1(catalog []catalogUpdate) *types.Configur
 		"getPassTLSCert":    p.getFuncBoolAttribute(label.SuffixFrontendPassTLSCert, label.DefaultPassTLSCert),
 	}
 
-	var allNodes []*api.ServiceEntry
+	var allNodes []serverItem
 	var services []*serviceUpdate
 	for _, info := range catalog {
 		if len(info.Nodes) > 0 {
 			services = append(services, info.Service)
-			allNodes = append(allNodes, info.Nodes...)
+			for _, node := range info.Nodes {
+				allNodes = append(allNodes, serverItem{node, info.Service.ServiceName})
+			}
 		}
 	}
 	// Ensure a stable ordering of nodes so that identical configurations may be detected
@@ -54,7 +54,7 @@ func (p *Provider) buildConfigurationV1(catalog []catalogUpdate) *types.Configur
 
 	templateObjects := struct {
 		Services []*serviceUpdate
-		Nodes    []*api.ServiceEntry
+		Nodes    []serverItem
 	}{
 		Services: services,
 		Nodes:    allNodes,
